@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useData } from "@/components/DataProvider";
+import { InstallApp } from "@/components/InstallApp";
 import { Empty, Header, Stepper, useToast } from "@/components/ui";
 import { keyOf, type ShoppingItem } from "@/lib/types";
 
@@ -226,6 +227,8 @@ export default function ComprarPage() {
           </div>
         </section>
       )}
+
+      <InstallApp />
 
       {toast}
     </main>

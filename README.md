@@ -48,10 +48,16 @@ Al terminar imprime la URL publica.
 
 Listo: la app pasa a modo "Nube" y crea las tablas en el primer uso.
 
-### Instalarla en el telefono
+### Instalarla en el telefono (PWA)
 
-Abrir la URL en el celular → menu del navegador → **Agregar a inicio**.
-Queda como una app, sin barra del navegador.
+- **Android / Chrome**: al abrir la URL aparece un aviso "Instalar en el telefono" con el boton
+  **Instalar**. Tambien sale solo el cartel del navegador.
+- **iPhone / Safari**: boton **Compartir** → **Agregar a inicio**.
+
+Queda como una app: icono propio, pantalla completa sin barra del navegador y abre aunque
+no haya señal (el service worker guarda las pantallas; el stock y la lista siempre se piden frescos).
+
+Los iconos se generan con `node scripts/make-icons.mjs` a partir del dibujo de `public/icon.svg`.
 
 ## Desarrollo local
 

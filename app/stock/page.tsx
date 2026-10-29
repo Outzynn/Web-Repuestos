@@ -94,14 +94,31 @@ export default function StockPage() {
                 <button
                   type="button"
                   onClick={() => setEditingId(part.id)}
-                  className="min-w-0 flex-1 text-left"
+                  className="flex min-w-0 flex-1 items-center gap-1 text-left"
                 >
-                  <p className="truncate text-[17px] font-medium">{part.name}</p>
-                  <p className="truncate text-[13px] text-muted">
-                    {part.category}
-                    {part.price ? " · $" + part.price.toLocaleString("es-AR") : ""}
-                    {part.qty === 0 ? " · sin stock" : ""}
-                  </p>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[17px] font-medium">{part.name}</span>
+                    <span className="block truncate text-[13px] text-muted">
+                      {part.category}
+                      {part.price ? " · $" + part.price.toLocaleString("es-AR") : ""}
+                      {part.qty === 0 ? " · sin stock" : ""}
+                    </span>
+                  </span>
+                  {/* La flecha avisa que tocando el repuesto se edita o se borra */}
+                  <span className="shrink-0 text-muted">
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="m9 5 7 7-7 7" />
+                    </svg>
+                  </span>
                 </button>
                 <Stepper
                   value={part.qty}
@@ -124,6 +141,7 @@ export default function StockPage() {
         }}
         onDelete={async () => {
           if (!editing) return;
+          if (!window.confirm("¿Eliminar " + editing.name + " del stock?")) return;
           await deletePart(editing.id);
           setEditingId(null);
           show("Repuesto eliminado");
