@@ -10,14 +10,13 @@ const tabs = [
   { href: "/agregar", label: "Agregar", icon: "plus" as const },
 ];
 
-function Icon({ name, active }: { name: "cart" | "box" | "plus"; active: boolean }) {
-  const stroke = active ? "#0071e3" : "#86868b";
+function Icon({ name }: { name: "cart" | "box" | "plus" }) {
   const common = {
     width: 26,
     height: 26,
     viewBox: "0 0 24 24",
     fill: "none",
-    stroke,
+    stroke: "currentColor",
     strokeWidth: 1.9,
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
@@ -52,7 +51,7 @@ export function TabBar() {
   const pending = items.filter((i) => !i.done).length;
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/85 backdrop-blur-xl">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-card/85 backdrop-blur-xl">
       <div className="safe-bottom mx-auto flex max-w-md items-stretch">
         {tabs.map((tab) => {
           const active = pathname === tab.href;
@@ -60,11 +59,13 @@ export function TabBar() {
             <Link
               key={tab.href}
               href={tab.href}
-              className="relative flex flex-1 flex-col items-center gap-1 pt-2 text-[11px] font-medium"
-              style={{ color: active ? "#0071e3" : "#86868b" }}
+              className={
+                "relative flex flex-1 flex-col items-center gap-1 pt-2 text-[11px] font-medium " +
+                (active ? "text-brand" : "text-muted")
+              }
             >
               <span className="relative">
-                <Icon name={tab.icon} active={active} />
+                <Icon name={tab.icon} />
                 {tab.href === "/" && pending > 0 && (
                   <span className="absolute -right-2 -top-1 min-w-[18px] rounded-full bg-danger px-1 text-center text-[10px] font-bold leading-[18px] text-white">
                     {pending}

@@ -13,6 +13,11 @@ Next.js 15 + Tailwind. Se despliega en Vercel sin configuracion.
 | **Stock** | Buscador y filtro por categoria. Sumas o restas unidades con +/-. Tocando el repuesto podes editarlo, borrarlo o mandarlo a la lista de compra. |
 | **Agregar** | Alta de repuesto: nombre, categoria, cantidad y precio opcional. Si ya existe, suma al existente en vez de duplicarlo. |
 
+## Tema claro y oscuro
+
+Arranca con el tema del celular. Con el boton de sol/luna del encabezado lo cambias a mano
+y esa eleccion queda guardada en ese dispositivo.
+
 ## Donde se guardan los datos
 
 - **Sin configurar nada**: en el propio telefono (`localStorage`). Funciona al instante,

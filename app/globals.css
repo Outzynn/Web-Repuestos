@@ -2,8 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Tema claro (por defecto) */
 :root {
   color-scheme: light;
+  --c-app: 242 242 247;
+  --c-card: 255 255 255;
+  --c-ink: 29 29 31;
+  --c-muted: 134 134 139;
+  --c-line: 229 229 234;
+  --c-brand: 0 113 227;
+  --c-danger: 255 59 48;
+  --c-ok: 52 199 89;
+  --c-warn: 255 149 0;
+}
+
+/* Tema oscuro: lo activa la clase .dark en <html> (ver components/Theme.tsx) */
+.dark {
+  color-scheme: dark;
+  --c-app: 0 0 0;
+  --c-card: 28 28 30;
+  --c-ink: 245 245 247;
+  --c-muted: 152 152 157;
+  --c-line: 58 58 60;
+  --c-brand: 10 132 255;
+  --c-danger: 255 69 58;
+  --c-ok: 48 209 88;
+  --c-warn: 255 159 10;
 }
 
 html {

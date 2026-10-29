@@ -86,7 +86,7 @@ export default function ComprarPage() {
         title="A comprar"
         subtitle={subtitle}
         right={
-          <span className="rounded-full border border-line bg-white px-2.5 py-1 text-[11px] font-semibold text-muted">
+          <span className="rounded-full border border-line bg-card px-2.5 py-1 text-[11px] font-semibold text-muted">
             {mode === "cloud" ? "Nube" : mode === "local" ? "Este equipo" : "..."}
           </span>
         }
@@ -97,7 +97,7 @@ export default function ComprarPage() {
       )}
 
       {/* Carga rapida: la pantalla mas usada de la app */}
-      <section className="mt-4 rounded-2xl bg-white p-3 shadow-sm">
+      <section className="mt-4 rounded-2xl bg-card p-3 shadow-sm">
         <div className="flex items-center gap-2">
           <input
             value={name}
@@ -164,7 +164,7 @@ export default function ComprarPage() {
             hint="Anota lo que necesites cuando entre un equipo a reparar"
           />
         ) : (
-          <ul className="divide-y divide-line overflow-hidden rounded-2xl bg-white shadow-sm">
+          <ul className="divide-y divide-line overflow-hidden rounded-2xl bg-card shadow-sm">
             {pending.map((item) => (
               <Row
                 key={item.id}
@@ -183,7 +183,7 @@ export default function ComprarPage() {
         <button
           type="button"
           onClick={shareList}
-          className="mt-4 w-full rounded-xl border border-line bg-white py-3.5 text-[16px] font-semibold text-brand"
+          className="mt-4 w-full rounded-xl border border-line bg-card py-3.5 text-[16px] font-semibold text-brand"
         >
           Compartir / copiar lista
         </button>
@@ -194,7 +194,7 @@ export default function ComprarPage() {
           <h2 className="mb-2 px-1 text-[13px] font-semibold uppercase tracking-wide text-muted">
             Comprados ({done.length})
           </h2>
-          <ul className="divide-y divide-line overflow-hidden rounded-2xl bg-white shadow-sm">
+          <ul className="divide-y divide-line overflow-hidden rounded-2xl bg-card shadow-sm">
             {done.map((item) => (
               <Row
                 key={item.id}
@@ -220,7 +220,7 @@ export default function ComprarPage() {
                 clearDone();
                 show("Comprados borrados");
               }}
-              className="rounded-xl border border-line bg-white px-4 py-3.5 text-[16px] font-semibold text-muted"
+              className="rounded-xl border border-line bg-card px-4 py-3.5 text-[16px] font-semibold text-muted"
             >
               Borrar
             </button>

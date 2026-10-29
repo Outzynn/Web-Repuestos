@@ -3,6 +3,7 @@ import "./globals.css";
 import { DataProvider } from "@/components/DataProvider";
 import { RegisterServiceWorker } from "@/components/InstallApp";
 import { TabBar } from "@/components/TabBar";
+import { themeScript } from "@/components/Theme";
 
 export const metadata: Metadata = {
   title: "Repuestos",
@@ -23,12 +24,18 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#f2f2f7",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f2f2f7" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="bg-app text-ink antialiased">
         <DataProvider>
           <div className="mx-auto min-h-screen w-full max-w-md pb-28">{children}</div>

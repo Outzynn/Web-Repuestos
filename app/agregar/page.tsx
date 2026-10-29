@@ -47,7 +47,7 @@ export default function AgregarPage() {
     <main className="px-4">
       <Header title="Agregar" subtitle="Carga un repuesto al stock" />
 
-      <section className="mt-4 space-y-4 rounded-2xl bg-white p-4 shadow-sm">
+      <section className="mt-4 space-y-4 rounded-2xl bg-card p-4 shadow-sm">
         <div>
           <label className="mb-1.5 block text-[13px] font-semibold text-muted" htmlFor="nombre">
             Repuesto

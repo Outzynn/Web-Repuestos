@@ -57,7 +57,7 @@ export default function StockPage() {
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Buscar repuesto"
             enterKeyHint="search"
-            className="w-full rounded-xl border border-line bg-white py-3 pl-10 pr-10 text-[17px] outline-none placeholder:text-muted focus:ring-2 focus:ring-brand/40"
+            className="w-full rounded-xl border border-line bg-card py-3 pl-10 pr-10 text-[17px] outline-none placeholder:text-muted focus:ring-2 focus:ring-brand/40"
           />
           {query && (
             <button
@@ -88,7 +88,7 @@ export default function StockPage() {
             }
           />
         ) : (
-          <ul className="divide-y divide-line overflow-hidden rounded-2xl bg-white shadow-sm">
+          <ul className="divide-y divide-line overflow-hidden rounded-2xl bg-card shadow-sm">
             {visible.map((part) => (
               <li key={part.id} className="flex items-center gap-3 px-3 py-2.5">
                 <button
@@ -191,7 +191,7 @@ function EditSheet({
         <input
           value={name}
           onChange={(event) => setName(event.target.value)}
-          className="w-full rounded-xl border border-line bg-white px-3 py-3 text-[17px] outline-none focus:ring-2 focus:ring-brand/40"
+          className="w-full rounded-xl border border-line bg-card px-3 py-3 text-[17px] outline-none focus:ring-2 focus:ring-brand/40"
         />
         <CategoryChips value={category} onChange={setCategory} />
         <input
@@ -199,7 +199,7 @@ function EditSheet({
           onChange={(event) => setPrice(event.target.value)}
           inputMode="numeric"
           placeholder="Precio (opcional)"
-          className="w-full rounded-xl border border-line bg-white px-3 py-3 text-[17px] outline-none placeholder:text-muted focus:ring-2 focus:ring-brand/40"
+          className="w-full rounded-xl border border-line bg-card px-3 py-3 text-[17px] outline-none placeholder:text-muted focus:ring-2 focus:ring-brand/40"
         />
 
         <button
@@ -218,14 +218,14 @@ function EditSheet({
         <button
           type="button"
           onClick={onBuy}
-          className="w-full rounded-xl border border-line bg-white py-3.5 text-[16px] font-semibold text-brand"
+          className="w-full rounded-xl border border-line bg-card py-3.5 text-[16px] font-semibold text-brand"
         >
           Agregar a la lista de compra
         </button>
         <button
           type="button"
           onClick={onDelete}
-          className="w-full rounded-xl border border-danger/30 bg-white py-3.5 text-[16px] font-semibold text-danger"
+          className="w-full rounded-xl border border-danger/30 bg-card py-3.5 text-[16px] font-semibold text-danger"
         >
           Eliminar repuesto
         </button>
