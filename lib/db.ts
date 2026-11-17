@@ -172,8 +172,9 @@ export async function readAll(): Promise<Snapshot> {
 async function addProduct(p: Product) {
   const db = client();
   await db`
-    INSERT INTO parts (id, name, category, qty, cost, price, barcode, note)
-    VALUES (${p.id}, ${p.name}, ${p.category}, ${p.qty}, ${p.cost}, ${p.price}, ${p.barcode}, ${p.note})
+    INSERT INTO parts (id, name, category, qty, cost, price, barcode, note, created_at)
+    VALUES (${p.id}, ${p.name}, ${p.category}, ${p.qty}, ${p.cost}, ${p.price}, ${p.barcode},
+            ${p.note}, ${p.createdAt})
     ON CONFLICT (id) DO NOTHING
   `;
 }
@@ -214,8 +215,9 @@ export async function runOp(op: Op): Promise<void> {
     case "sale.add": {
       const s = op.sale;
       await db`
-        INSERT INTO sales (id, lines, total, cost, pay, note)
-        VALUES (${s.id}, ${JSON.stringify(s.lines)}::jsonb, ${s.total}, ${s.cost}, ${s.pay}, ${s.note})
+        INSERT INTO sales (id, lines, total, cost, pay, note, created_at)
+        VALUES (${s.id}, ${JSON.stringify(s.lines)}::jsonb, ${s.total}, ${s.cost}, ${s.pay},
+                ${s.note}, ${s.createdAt})
         ON CONFLICT (id) DO NOTHING
       `;
       return;
@@ -229,10 +231,10 @@ export async function runOp(op: Op): Promise<void> {
       const j = op.job;
       await db`
         INSERT INTO jobs (id, device, customer, issue, parts_cost, charged, status, paid,
-                          facu_kind, facu_value, facu_paid, note, closed_at)
+                          facu_kind, facu_value, facu_paid, note, closed_at, created_at)
         VALUES (${j.id}, ${j.device}, ${j.customer}, ${j.issue}, ${j.partsCost}, ${j.charged},
                 ${j.status}, ${j.paid}, ${j.facuKind}, ${j.facuValue}, ${j.facuPaid},
-                ${j.note}, ${j.closedAt})
+                ${j.note}, ${j.closedAt}, ${j.createdAt})
         ON CONFLICT (id) DO NOTHING
       `;
       return;
@@ -266,8 +268,8 @@ export async function runOp(op: Op): Promise<void> {
     case "item.add": {
       const i = op.item;
       await db`
-        INSERT INTO shopping_items (id, name, kind, qty, note, done)
-        VALUES (${i.id}, ${i.name}, ${i.kind}, ${i.qty}, ${i.note}, ${i.done})
+        INSERT INTO shopping_items (id, name, kind, qty, note, done, created_at)
+        VALUES (${i.id}, ${i.name}, ${i.kind}, ${i.qty}, ${i.note}, ${i.done}, ${i.createdAt})
         ON CONFLICT (id) DO NOTHING
       `;
       return;
