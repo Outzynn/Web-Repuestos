@@ -294,7 +294,7 @@ export default function VenderPage() {
       {cart.length > 0 && <div className="h-20" />}
 
       {cart.length > 0 && (
-        <div className="fixed inset-x-0 bottom-[68px] z-40 px-3">
+        <div className="above-tabs fixed inset-x-0 z-40 px-3">
           <button
             type="button"
             onClick={() => setCheckout(true)}

@@ -233,7 +233,7 @@ export function Sheet({
         onClick={onClose}
         className="absolute inset-0 bg-black/40"
       />
-      <div className="relative z-10 max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-3xl border-t border-line bg-app p-4 pb-8 shadow-2xl">
+      <div className="safe-sheet relative z-10 max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-3xl border-t border-line bg-app p-4 shadow-2xl">
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-line" />
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="truncate text-[20px] font-bold">{title}</h2>

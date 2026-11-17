@@ -38,7 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="bg-app text-ink antialiased">
         <DataProvider>
-          <div className="mx-auto min-h-screen w-full max-w-md pb-28">{children}</div>
+          <div className="pb-tabs mx-auto min-h-screen w-full max-w-md">{children}</div>
           <TabBar />
           <RegisterServiceWorker />
         </DataProvider>

@@ -4,6 +4,8 @@
 
 /* Tema claro (por defecto) */
 :root {
+  /* Lo que el telefono reserva abajo: 0 en la web, ~34px en la app instalada */
+  --sab: env(safe-area-inset-bottom, 0px);
   color-scheme: light;
   --c-app: 242 242 247;
   --c-card: 255 255 255;
@@ -53,5 +55,20 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .safe-bottom {
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
+  padding-bottom: calc(var(--sab) + 0.5rem);
+}
+
+/* Deja el contenido por encima de la barra de pestañas */
+.pb-tabs {
+  padding-bottom: calc(7rem + var(--sab));
+}
+
+/* Barra del ticket: siempre apoyada arriba de las pestañas */
+.above-tabs {
+  bottom: calc(68px + var(--sab));
+}
+
+/* Que el ultimo boton de una hoja no quede bajo la raya del home */
+.safe-sheet {
+  padding-bottom: calc(2rem + var(--sab));
 }
