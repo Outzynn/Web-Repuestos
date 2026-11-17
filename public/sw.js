@@ -1,9 +1,17 @@
-/* Service worker de Repuestos: deja usar la app sin señal. */
-const VERSION = "v1";
-const CACHE = "repuestos-" + VERSION;
+/* Service worker de Kylobyte: deja usar la app sin señal. */
+const VERSION = "v2";
+const CACHE = "kylobyte-" + VERSION;
 
 /* Pantallas base: si no hay internet, igual abren. */
-const PRECACHE = ["/", "/stock", "/agregar", "/manifest.webmanifest", "/icon-192.png"];
+const PRECACHE = [
+  "/",
+  "/stock",
+  "/service",
+  "/caja",
+  "/comprar",
+  "/manifest.webmanifest",
+  "/icon-192.png",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

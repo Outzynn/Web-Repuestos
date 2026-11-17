@@ -3,9 +3,9 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "Repuestos - Servicio Tecnico",
-    short_name: "Repuestos",
-    description: "Stock de repuestos y lista de compra",
+    name: "Kylobyte - Ventas y Stock",
+    short_name: "Kylobyte",
+    description: "Ventas, stock y service del local",
     lang: "es",
     start_url: "/",
     scope: "/",
@@ -21,9 +21,10 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
     shortcuts: [
-      { name: "A comprar", url: "/" },
+      { name: "Vender", url: "/" },
       { name: "Stock", url: "/stock" },
-      { name: "Agregar repuesto", url: "/agregar" },
+      { name: "Service", url: "/service" },
+      { name: "Caja", url: "/caja" },
     ],
   };
 }

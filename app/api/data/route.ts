@@ -1,18 +1,20 @@
 import { NextResponse } from "next/server";
-import { ensureSchema, hasDb, listItems, listParts } from "@/lib/db";
+import { ensureSchema, hasDb, readAll } from "@/lib/db";
+import { EMPTY } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   if (!hasDb) {
-    return NextResponse.json({ mode: "local", parts: [], items: [] });
+    return NextResponse.json({ mode: "local", ...EMPTY });
   }
   try {
     await ensureSchema();
-    const [parts, items] = await Promise.all([listParts(), listItems()]);
-    return NextResponse.json({ mode: "cloud", parts, items });
+    const data = await readAll();
+    return NextResponse.json({ mode: "cloud", ...data });
   } catch (err) {
     console.error("GET /api/data", err);
-    return NextResponse.json({ mode: "local", parts: [], items: [] }, { status: 200 });
+    // Sin nube la app sigue andando con los datos del propio telefono.
+    return NextResponse.json({ mode: "local", ...EMPTY }, { status: 200 });
   }
 }

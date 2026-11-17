@@ -6,11 +6,11 @@ import { TabBar } from "@/components/TabBar";
 import { themeScript } from "@/components/Theme";
 
 export const metadata: Metadata = {
-  title: "Repuestos",
-  description: "Control de stock y lista de repuestos a comprar",
-  applicationName: "Repuestos",
+  title: "Kylobyte",
+  description: "Ventas, stock y service del local",
+  applicationName: "Kylobyte",
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, title: "Repuestos", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Kylobyte", statusBarStyle: "default" },
   icons: {
     icon: [
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },

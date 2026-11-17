@@ -1,90 +1,145 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useData } from "@/components/DataProvider";
 import { InstallApp } from "@/components/InstallApp";
-import { Empty, Header, Stepper, useToast } from "@/components/ui";
-import { keyOf, type ShoppingItem } from "@/lib/types";
+import { Scanner, useScanner } from "@/components/Scanner";
+import {
+  Chips,
+  Empty,
+  Field,
+  Header,
+  PrimaryButton,
+  Sheet,
+  Stepper,
+  useToast,
+} from "@/components/ui";
+import { money, parseMoney } from "@/lib/format";
+import {
+  keyOf,
+  newId,
+  PAY_METHODS,
+  type PayMethod,
+  type Product,
+  type SaleLine,
+} from "@/lib/types";
 
-export default function ComprarPage() {
-  const {
-    ready,
-    mode,
-    error,
-    items,
-    parts,
-    addItem,
-    updateItem,
-    deleteItem,
-    clearDone,
-    receiveDone,
-  } = useData();
+type CartLine = SaleLine & { key: string };
+
+export default function VenderPage() {
+  const { ready, mode, error, products, sales, registerSale } = useData();
   const { toast, show } = useToast();
+  const canScan = useScanner();
 
-  const [name, setName] = useState("");
-  const [qty, setQty] = useState(1);
+  const [query, setQuery] = useState("");
+  const [cart, setCart] = useState<CartLine[]>([]);
+  const [pay, setPay] = useState<PayMethod>("Efectivo");
   const [note, setNote] = useState("");
-  const [noteOpen, setNoteOpen] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [checkout, setCheckout] = useState(false);
+  const [freeOpen, setFreeOpen] = useState(false);
 
-  const pending = items.filter((i) => !i.done);
-  const done = items.filter((i) => i.done);
+  const total = cart.reduce((sum, line) => sum + line.price * line.qty, 0);
+  const units = cart.reduce((sum, line) => sum + line.qty, 0);
 
-  const suggestions = useMemo(() => {
-    const query = keyOf(name);
-    if (query.length < 2) return [];
-    return parts
-      .filter((p) => keyOf(p.name).includes(query) && keyOf(p.name) !== query)
-      .slice(0, 3);
-  }, [name, parts]);
-
-  async function submit() {
-    const clean = name.trim();
-    if (!clean) return;
-    await addItem({ name: clean, qty, note });
-    setName("");
-    setQty(1);
-    setNote("");
-    setNoteOpen(false);
-    show("Agregado a la lista");
-  }
-
-  function shareList() {
-    if (pending.length === 0) {
-      show("La lista esta vacia");
-      return;
+  /** Lo que mas sale: para vender con un solo toque sin buscar nada. */
+  const frequent = useMemo(() => {
+    const score = new Map<string, number>();
+    for (const sale of sales.slice(0, 120)) {
+      for (const line of sale.lines) {
+        if (line.productId) {
+          score.set(line.productId, (score.get(line.productId) ?? 0) + line.qty);
+        }
+      }
     }
-    const lines = pending.map((i) => {
-      const cantidad = i.qty > 1 ? i.qty + "x " : "";
-      const nota = i.note ? " (" + i.note + ")" : "";
-      return "- " + cantidad + i.name + nota;
+    return [...products]
+      .filter((p) => p.qty > 0)
+      .sort((a, b) => (score.get(b.id) ?? 0) - (score.get(a.id) ?? 0) || b.qty - a.qty)
+      .slice(0, 8);
+  }, [products, sales]);
+
+  const results = useMemo(() => {
+    const q = keyOf(query);
+    if (!q) return [];
+    return products
+      .filter((p) => keyOf(p.name).includes(q) || (p.barcode && keyOf(p.barcode).includes(q)))
+      .slice(0, 10);
+  }, [products, query]);
+
+  const addLine = useCallback((product: Product) => {
+    setCart((prev) => {
+      const found = prev.find((line) => line.productId === product.id);
+      if (found) {
+        return prev.map((line) =>
+          line.key === found.key ? { ...line, qty: line.qty + 1 } : line,
+        );
+      }
+      return [
+        ...prev,
+        {
+          key: newId(),
+          productId: product.id,
+          name: product.name,
+          qty: 1,
+          price: product.price ?? 0,
+          cost: product.cost,
+        },
+      ];
     });
-    const text = "Repuestos a comprar\n" + lines.join("\n");
+    setQuery("");
+  }, []);
 
-    if (typeof navigator !== "undefined" && navigator.share) {
-      navigator.share({ title: "Repuestos a comprar", text }).catch(() => {});
-      return;
+  function onProduct(product: Product) {
+    addLine(product);
+    if (product.price === null) {
+      setCheckout(true);
+      show("Sin precio cargado: ponelo en el ticket");
     }
-    navigator.clipboard
-      ?.writeText(text)
-      .then(() => show("Lista copiada"))
-      .catch(() => show("No se pudo copiar"));
   }
 
-  async function intoStock() {
-    const count = await receiveDone();
-    show(count > 0 ? count + " repuesto(s) al stock" : "Nada marcado como comprado");
+  const onCode = useCallback(
+    (code: string) => {
+      setScanning(false);
+      const match = products.find((p) => p.barcode && keyOf(p.barcode) === keyOf(code));
+      if (match) {
+        addLine(match);
+        show(match.name);
+        return;
+      }
+      setQuery(code);
+      show("Codigo nuevo: buscalo o cargalo en Stock");
+    },
+    [addLine, products, show],
+  );
+
+  function setQty(key: string, qty: number) {
+    setCart((prev) =>
+      qty === 0
+        ? prev.filter((line) => line.key !== key)
+        : prev.map((line) => (line.key === key ? { ...line, qty } : line)),
+    );
   }
 
-  const subtitle =
-    pending.length === 0
-      ? "Sin pendientes"
-      : pending.length + (pending.length === 1 ? " repuesto pendiente" : " repuestos pendientes");
+  function setPrice(key: string, text: string) {
+    const price = parseMoney(text) ?? 0;
+    setCart((prev) => prev.map((line) => (line.key === key ? { ...line, price } : line)));
+  }
+
+  async function cobrar() {
+    if (cart.length === 0) return;
+    const lines = cart.map(({ key: _key, ...line }) => line);
+    await registerSale({ lines, pay, note });
+    setCart([]);
+    setNote("");
+    setCheckout(false);
+    show("Venta de " + money(total) + " registrada");
+  }
 
   return (
     <main className="px-4">
       <Header
-        title="A comprar"
-        subtitle={subtitle}
+        title="Vender"
+        subtitle={units > 0 ? units + " en el ticket · " + money(total) : "Buscá, escaneá y cobrá"}
         right={
           <span className="rounded-full border border-line bg-card px-2.5 py-1 text-[11px] font-semibold text-muted">
             {mode === "cloud" ? "Nube" : mode === "local" ? "Este equipo" : "..."}
@@ -96,228 +151,287 @@ export default function ComprarPage() {
         <p className="mt-3 rounded-xl bg-danger/10 px-3 py-2 text-[13px] text-danger">{error}</p>
       )}
 
-      {/* Carga rapida: la pantalla mas usada de la app */}
+      {/* Buscador: el centro de la pantalla mas usada */}
       <section className="mt-4 rounded-2xl bg-card p-3 shadow-sm">
         <div className="flex items-center gap-2">
-          <input
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") submit();
-            }}
-            placeholder="Modulo A25, bateria iPhone 11..."
-            enterKeyHint="done"
-            autoComplete="off"
-            className="min-w-0 flex-1 rounded-xl bg-app px-3 py-3 text-[17px] outline-none placeholder:text-muted focus:ring-2 focus:ring-brand/40"
-          />
-          <Stepper value={qty} onChange={setQty} min={1} />
+          <div className="relative min-w-0 flex-1">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
+              </svg>
+            </span>
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar producto o codigo"
+              enterKeyHint="search"
+              autoComplete="off"
+              className="w-full rounded-xl bg-app py-3 pl-10 pr-9 text-[17px] outline-none placeholder:text-muted focus:ring-2 focus:ring-brand/40"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                aria-label="Limpiar"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          {canScan && (
+            <button
+              type="button"
+              onClick={() => setScanning(true)}
+              aria-label="Escanear codigo"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-app text-brand active:scale-95"
+            >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+              >
+                <path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" />
+                <path d="M7 12h10" />
+              </svg>
+            </button>
+          )}
         </div>
 
-        {suggestions.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-2">
-            {suggestions.map((part) => (
-              <button
-                key={part.id}
-                type="button"
-                onClick={() => setName(part.name)}
-                className="rounded-full border border-line px-3 py-1.5 text-[13px] text-ink"
-              >
-                {part.name}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {noteOpen ? (
-          <input
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            placeholder="Para quien / equipo (opcional)"
-            className="mt-2 w-full rounded-xl bg-app px-3 py-2.5 text-[15px] outline-none placeholder:text-muted focus:ring-2 focus:ring-brand/40"
-          />
-        ) : (
-          <button
-            type="button"
-            onClick={() => setNoteOpen(true)}
-            className="mt-2 text-[13px] font-medium text-brand"
-          >
-            + Agregar nota
-          </button>
-        )}
-
         <button
           type="button"
-          onClick={submit}
-          disabled={!name.trim()}
-          className="mt-3 w-full rounded-xl bg-brand py-3.5 text-[17px] font-semibold text-white disabled:opacity-40"
+          onClick={() => setFreeOpen(true)}
+          className="mt-2 px-1 text-[13px] font-medium text-brand"
         >
-          Agregar a la lista
+          + Vender algo que no esta en el stock
         </button>
       </section>
 
-      <section className="mt-5">
+      <section className="mt-4">
         {!ready ? (
           <p className="py-10 text-center text-[14px] text-muted">Cargando...</p>
-        ) : pending.length === 0 ? (
+        ) : query ? (
+          results.length === 0 ? (
+            <Empty
+              title="Sin resultados"
+              hint="Podes venderlo igual con «Vender algo que no esta en el stock»"
+            />
+          ) : (
+            <ul className="divide-y divide-line overflow-hidden rounded-2xl bg-card shadow-sm">
+              {results.map((product) => (
+                <li key={product.id}>
+                  <button
+                    type="button"
+                    onClick={() => onProduct(product)}
+                    className="flex w-full items-center gap-3 px-3 py-3 text-left active:bg-app"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[17px] font-medium">{product.name}</span>
+                      <span className="block truncate text-[13px] text-muted">
+                        {product.qty > 0 ? product.qty + " en stock" : "sin stock"}
+                        {product.category ? " · " + product.category : ""}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span className="block text-[17px] font-semibold tabular-nums">
+                        {money(product.price)}
+                      </span>
+                      <span className="text-[12px] font-semibold text-brand">Agregar</span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )
+        ) : products.length === 0 ? (
           <Empty
-            title="No falta nada"
-            hint="Anota lo que necesites cuando entre un equipo a reparar"
+            title="Todavia no hay productos"
+            hint="Cargalos desde Stock o importa el catalogo del Excel"
           />
         ) : (
-          <ul className="divide-y divide-line overflow-hidden rounded-2xl bg-card shadow-sm">
-            {pending.map((item) => (
-              <Row
-                key={item.id}
-                item={item}
-                stock={parts.find((p) => keyOf(p.name) === keyOf(item.name))?.qty ?? 0}
-                onToggle={() => updateItem(item.id, { done: true })}
-                onQty={(next) => updateItem(item.id, { qty: next })}
-                onDelete={() => deleteItem(item.id)}
-              />
-            ))}
-          </ul>
+          <>
+            <h2 className="mb-2 px-1 text-[13px] font-semibold uppercase tracking-wide text-muted">
+              Lo que mas vendes
+            </h2>
+            <div className="grid grid-cols-2 gap-2">
+              {frequent.map((product) => (
+                <button
+                  key={product.id}
+                  type="button"
+                  onClick={() => onProduct(product)}
+                  className="rounded-2xl bg-card p-3 text-left shadow-sm active:scale-[0.98]"
+                >
+                  <span className="line-clamp-2 block text-[15px] font-medium leading-snug">
+                    {product.name}
+                  </span>
+                  <span className="mt-1 block text-[15px] font-semibold tabular-nums text-brand">
+                    {money(product.price)}
+                  </span>
+                  <span className="block text-[12px] text-muted">{product.qty} en stock</span>
+                </button>
+              ))}
+            </div>
+          </>
         )}
       </section>
 
-      {pending.length > 0 && (
-        <button
-          type="button"
-          onClick={shareList}
-          className="mt-4 w-full rounded-xl border border-line bg-card py-3.5 text-[16px] font-semibold text-brand"
-        >
-          Compartir / copiar lista
-        </button>
-      )}
-
-      {done.length > 0 && (
-        <section className="mt-7">
-          <h2 className="mb-2 px-1 text-[13px] font-semibold uppercase tracking-wide text-muted">
-            Comprados ({done.length})
-          </h2>
-          <ul className="divide-y divide-line overflow-hidden rounded-2xl bg-card shadow-sm">
-            {done.map((item) => (
-              <Row
-                key={item.id}
-                item={item}
-                stock={0}
-                onToggle={() => updateItem(item.id, { done: false })}
-                onQty={(next) => updateItem(item.id, { qty: next })}
-                onDelete={() => deleteItem(item.id)}
-              />
-            ))}
-          </ul>
-          <div className="mt-3 flex gap-2">
-            <button
-              type="button"
-              onClick={intoStock}
-              className="flex-1 rounded-xl bg-ok py-3.5 text-[16px] font-semibold text-white"
-            >
-              Pasar al stock
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                clearDone();
-                show("Comprados borrados");
-              }}
-              className="rounded-xl border border-line bg-card px-4 py-3.5 text-[16px] font-semibold text-muted"
-            >
-              Borrar
-            </button>
-          </div>
-        </section>
-      )}
-
       <InstallApp />
+
+      {/* Espacio para que la barra del ticket no tape el contenido */}
+      {cart.length > 0 && <div className="h-20" />}
+
+      {cart.length > 0 && (
+        <div className="fixed inset-x-0 bottom-[68px] z-40 px-3">
+          <button
+            type="button"
+            onClick={() => setCheckout(true)}
+            className="mx-auto flex w-full max-w-md items-center justify-between gap-3 rounded-2xl bg-brand px-4 py-3 text-white shadow-lg active:scale-[0.99]"
+          >
+            <span className="text-left">
+              <span className="block text-[12px] opacity-80">
+                {units === 1 ? "1 producto" : units + " productos"}
+              </span>
+              <span className="block text-[20px] font-bold tabular-nums">{money(total)}</span>
+            </span>
+            <span className="rounded-xl bg-white/20 px-4 py-2 text-[16px] font-semibold">
+              Cobrar
+            </span>
+          </button>
+        </div>
+      )}
+
+      <Sheet open={checkout} onClose={() => setCheckout(false)} title="Cobrar">
+        <ul className="divide-y divide-line overflow-hidden rounded-2xl bg-card">
+          {cart.map((line) => (
+            <li key={line.key} className="px-3 py-2.5">
+              <p className="truncate text-[16px] font-medium">{line.name}</p>
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <Stepper value={line.qty} onChange={(next) => setQty(line.key, next)} />
+                <div className="relative w-32">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">
+                    $
+                  </span>
+                  <input
+                    value={line.price ? String(line.price) : ""}
+                    onChange={(event) => setPrice(line.key, event.target.value)}
+                    inputMode="numeric"
+                    placeholder="0"
+                    aria-label={"Precio de " + line.name}
+                    className="w-full rounded-xl bg-app py-2.5 pl-7 pr-2 text-right text-[17px] font-semibold tabular-nums outline-none focus:ring-2 focus:ring-brand/40"
+                  />
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        <div className="mt-3">
+          <Chips options={[...PAY_METHODS]} value={pay} onChange={(v) => setPay(v as PayMethod)} />
+        </div>
+
+        <div className="mt-3">
+          <Field label="Nota (opcional)" value={note} onChange={setNote} placeholder="Ej: para Pepe" />
+        </div>
+
+        <div className="mt-4 flex items-end justify-between px-1">
+          <span className="text-[14px] font-semibold uppercase tracking-wide text-muted">Total</span>
+          <span className="text-[30px] font-bold leading-none tabular-nums">{money(total)}</span>
+        </div>
+
+        <div className="mt-3 space-y-2">
+          <PrimaryButton onClick={cobrar} tone="ok" disabled={cart.length === 0}>
+            Cobrar {money(total)}
+          </PrimaryButton>
+          <button
+            type="button"
+            onClick={() => {
+              setCart([]);
+              setCheckout(false);
+            }}
+            className="w-full py-2 text-[15px] font-medium text-danger"
+          >
+            Vaciar ticket
+          </button>
+        </div>
+      </Sheet>
+
+      {freeOpen && (
+        <FreeSaleSheet
+          suggestion={query}
+          onClose={() => setFreeOpen(false)}
+          onAdd={(line) => {
+            setCart((prev) => [...prev, { ...line, key: newId() }]);
+            setFreeOpen(false);
+            setQuery("");
+            setCheckout(true);
+          }}
+        />
+      )}
+
+      {scanning && <Scanner onCode={onCode} onClose={() => setScanning(false)} />}
 
       {toast}
     </main>
   );
 }
 
-function Row({
-  item,
-  stock,
-  onToggle,
-  onQty,
-  onDelete,
+/** Para vender algo que no esta cargado: nombre y precio, nada mas. */
+function FreeSaleSheet({
+  suggestion,
+  onClose,
+  onAdd,
 }: {
-  item: ShoppingItem;
-  stock: number;
-  onToggle: () => void;
-  onQty: (next: number) => void;
-  onDelete: () => void;
+  suggestion: string;
+  onClose: () => void;
+  onAdd: (line: SaleLine) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  // Se monta recien al abrirse, asi arranca con lo que estaba buscando.
+  const [name, setName] = useState(suggestion);
+  const [price, setPrice] = useState("");
+  const [cost, setCost] = useState("");
 
   return (
-    <li className="px-3 py-2.5">
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-label={item.done ? "Desmarcar" : "Marcar como comprado"}
-          className={
-            "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 " +
-            (item.done ? "border-ok bg-ok text-white" : "border-line text-transparent")
-          }
+    <Sheet open onClose={onClose} title="Venta suelta">
+      <div className="space-y-3">
+        <Field
+          label="Que vendiste"
+          value={name}
+          onChange={setName}
+          placeholder="Ej: cambio de modulo"
+          autoFocus
+        />
+        <Field label="Precio" value={price} onChange={setPrice} placeholder="0" money />
+        <Field label="Costo (opcional)" value={cost} onChange={setCost} placeholder="0" money />
+        <PrimaryButton
+          onClick={() => {
+            const clean = name.trim();
+            if (!clean) return;
+            onAdd({
+              productId: null,
+              name: clean,
+              qty: 1,
+              price: parseMoney(price) ?? 0,
+              cost: parseMoney(cost),
+            });
+          }}
+          disabled={!name.trim()}
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="m5 13 4 4L19 7" />
-          </svg>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="min-w-0 flex-1 text-left"
-        >
-          <p
-            className={
-              "truncate text-[17px] " + (item.done ? "text-muted line-through" : "font-medium")
-            }
-          >
-            {item.qty > 1 && <span className="text-brand">{item.qty}x </span>}
-            {item.name}
-          </p>
-          {item.note && <p className="truncate text-[13px] text-muted">{item.note}</p>}
-          {!item.done && stock > 0 && (
-            <p className="text-[12px] font-medium text-warn">Ya hay {stock} en stock</p>
-          )}
-        </button>
-
-        {!open && (
-          <span className="shrink-0 px-2 text-muted">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="5" cy="12" r="1.8" />
-              <circle cx="12" cy="12" r="1.8" />
-              <circle cx="19" cy="12" r="1.8" />
-            </svg>
-          </span>
-        )}
+          Agregar al ticket
+        </PrimaryButton>
       </div>
-
-      {open && (
-        <div className="mt-2 flex items-center justify-between gap-3 pl-10">
-          <Stepper value={item.qty} onChange={onQty} min={1} />
-          <button
-            type="button"
-            onClick={onDelete}
-            className="rounded-xl border border-danger/30 px-3 py-2 text-[14px] font-semibold text-danger"
-          >
-            Eliminar
-          </button>
-        </div>
-      )}
-    </li>
+    </Sheet>
   );
 }

@@ -1,74 +1,88 @@
-# Repuestos
+# Kylobyte
 
-App mobile para el control de repuestos del servicio tecnico: stock, busqueda y
-—lo principal— la **lista de repuestos a comprar** para ir al proveedor con todo anotado.
+App mobile para el local: **vender, stock y service** en pocos toques.
+Pensada para usarla con una mano atras del mostrador, sin formularios largos
+y sin tener que cargar clientes.
 
 Next.js 15 + Tailwind. Se despliega en Vercel sin configuracion.
 
-## Las 3 pantallas
+## Las 5 pantallas
 
 | Pestaña | Para que sirve |
 | --- | --- |
-| **A comprar** | Anotas lo que falta (ej: "Modulo A25") en 2 toques. Avisa si ya hay stock de eso. Boton para compartir la lista por WhatsApp. Lo que marcas como comprado se pasa al stock de una vez. |
-| **Stock** | Buscador y filtro por categoria. Sumas o restas unidades con +/-. Tocando el repuesto podes editarlo, borrarlo o mandarlo a la lista de compra. |
-| **Agregar** | Alta de repuesto: nombre, categoria, cantidad y precio opcional. Si ya existe, suma al existente en vez de duplicarlo. |
+| **Vender** | Buscas o escaneas el producto, toca y va al ticket. "Cobrar" pide el medio de pago y listo: queda la venta y se descuenta el stock. Tambien se puede vender algo suelto que no este cargado. |
+| **Stock** | Buscador, filtro por categoria y +/− para ajustar. Tocando el producto se edita precio, costo, codigo o se borra. El boton + carga uno nuevo. |
+| **Service** | Equipos en reparacion: entra, se marca listo y se entrega (cobrado o debiendo). Guarda que se cobra y cuanto costo el repuesto. |
+| **Caja** | Lo que entro hoy / 7 dias / 30 dias: ventas, service, ganancia y medios de pago. Tocando una venta se ve el detalle y se puede borrar devolviendo el stock. |
+| **A comprar** | La lista para el proveedor. Lo que marcas como comprado se pasa al stock de una vez. |
+
+## Lo que se carga de cada cosa
+
+Lo minimo: un producto necesita nombre (precio, costo, codigo y categoria son
+opcionales) y un equipo de service necesita solo el equipo. Nada de clientes,
+fichas ni numeros de orden.
+
+## Codigo de barras
+
+En Chrome de Android aparece el boton de la camara al lado del buscador: lee el
+codigo y agrega el producto al ticket. Si el codigo no existe todavia, desde
+Stock abre la ficha para cargarlo. En los navegadores que no lo soportan el
+boton no se muestra y se busca escribiendo (tambien sirve un lector USB).
+
+## Catalogo del Excel
+
+La primera vez, en Stock aparece **Importar el catalogo del Excel**: carga los
+productos de la planilla KYLOBYTE con precio, costo y codigo. Solo agrega lo que
+falta, nunca pisa lo que ya este cargado.
 
 ## Tema claro y oscuro
 
-Arranca con el tema del celular. Con el boton de sol/luna del encabezado lo cambias a mano
-y esa eleccion queda guardada en ese dispositivo.
+Arranca con el tema del celular. Con el boton de sol/luna del encabezado se
+cambia a mano y esa eleccion queda guardada en ese dispositivo.
 
 ## Donde se guardan los datos
 
-- **Sin configurar nada**: en el propio telefono (`localStorage`). Funciona al instante,
-  pero cada dispositivo tiene su propia lista.
-- **Con una base de datos Postgres** (variable `DATABASE_URL`): los datos quedan en la nube
-  y se comparten entre todos los dispositivos. Las tablas se crean solas la primera vez.
+- **Sin configurar nada**: en el propio telefono (`localStorage`). Funciona al
+  instante, pero cada dispositivo tiene su propia informacion.
+- **Con una base de datos Postgres** (variable `DATABASE_URL`): todo queda en la
+  nube y se comparte entre los telefonos del local. Las tablas se crean solas.
 
-La app muestra en que modo esta con la etiqueta de arriba a la derecha: "Este equipo" o "Nube".
+La app muestra en que modo esta con la etiqueta de arriba a la derecha:
+"Este equipo" o "Nube".
 
 ## Deploy en Vercel
 
-### Opcion A — desde la terminal (lo mas rapido)
+### Opcion A — desde la terminal
 
 ```bash
-cd repuestos && npx vercel --prod
+npx vercel --prod
 ```
-
-La primera vez pide iniciar sesion y confirmar el proyecto (aceptar todo con Enter).
-Al terminar imprime la URL publica.
 
 ### Opcion B — desde GitHub
 
 1. Subir el repositorio a GitHub.
 2. En [vercel.com/new](https://vercel.com/new), importar el repo.
-3. En **Root Directory** elegir `repuestos`.
-4. Deploy. Cada `git push` vuelve a desplegar solo.
+3. Deploy. Cada `git push` vuelve a desplegar solo.
 
-### Base de datos compartida (opcional, recomendado si son varios)
+### Base de datos compartida (recomendado si son varios)
 
-1. En el proyecto de Vercel: pestaña **Storage** → **Create Database** → **Neon (Postgres)**.
-2. Vercel agrega solo la variable `DATABASE_URL` al proyecto.
-3. **Redeploy** (pestaña Deployments → ... → Redeploy).
-
-Listo: la app pasa a modo "Nube" y crea las tablas en el primer uso.
+1. En el proyecto de Vercel: **Storage** → **Create Database** → **Neon (Postgres)**.
+2. Vercel agrega solo la variable `DATABASE_URL`.
+3. **Redeploy** (Deployments → ... → Redeploy).
 
 ### Instalarla en el telefono (PWA)
 
-- **Android / Chrome**: al abrir la URL aparece un aviso "Instalar en el telefono" con el boton
-  **Instalar**. Tambien sale solo el cartel del navegador.
+- **Android / Chrome**: al abrir la URL aparece el aviso "Instalar en el telefono".
 - **iPhone / Safari**: boton **Compartir** → **Agregar a inicio**.
 
-Queda como una app: icono propio, pantalla completa sin barra del navegador y abre aunque
-no haya señal (el service worker guarda las pantallas; el stock y la lista siempre se piden frescos).
-
-Los iconos se generan con `node scripts/make-icons.mjs` a partir del dibujo de `public/icon.svg`.
+Queda como una app: icono propio, pantalla completa y abre aunque no haya señal.
+Los iconos se generan con `node scripts/make-icons.mjs`.
 
 ## Desarrollo local
 
 ```bash
-cd repuestos && npm install && npm run dev
+npm install && npm run dev
 ```
 
 Abre en http://localhost:3000. Sin `DATABASE_URL` arranca en modo local.
-Para probar contra Postgres, crear un archivo `.env.local` con `DATABASE_URL=...`.
+Para probar contra Postgres, crear un `.env.local` con `DATABASE_URL=...`.
