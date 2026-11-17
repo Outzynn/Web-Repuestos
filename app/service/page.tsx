@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useData } from "@/components/DataProvider";
 import {
   AddButton,
   Chips,
   Empty,
+  SearchButton,
   Field,
   GhostButton,
   Header,
@@ -17,6 +18,7 @@ import {
 import { money, parseMoney, whenLabel } from "@/lib/format";
 import {
   facuCut,
+  keyOf,
   shopProfit,
   type FacuKind,
   type Job,
@@ -35,18 +37,40 @@ export default function ServicePage() {
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
 
-  const taller = jobs.filter((j) => j.status === "taller");
-  const listos = jobs.filter((j) => j.status === "listo");
-  const entregados = jobs.filter((j) => j.status === "entregado").slice(0, 15);
+  useEffect(() => {
+    if (searching) searchRef.current?.focus();
+  }, [searching]);
+
+  // Busca por equipo, por quien lo trajo y por lo que habia que hacerle.
+  const q = keyOf(query);
+  const matches = (job: Job) =>
+    q.length === 0 ||
+    [job.device, job.customer, job.issue, job.note].some(
+      (field) => field && keyOf(field).includes(q),
+    );
+
+  const buscando = q.length > 0;
+  const encontrados = jobs.filter(matches);
+  const taller = encontrados.filter((j) => j.status === "taller");
+  const listos = encontrados.filter((j) => j.status === "listo");
+  const entregadosTodos = encontrados.filter((j) => j.status === "entregado");
+  // Sin buscar alcanza con los ultimos; buscando se miran todos.
+  const entregados = buscando ? entregadosTodos : entregadosTodos.slice(0, 15);
   const porCobrar = jobs
     .filter((j) => j.status === "entregado" && !j.paid)
     .reduce((sum, j) => sum + (j.charged ?? 0), 0);
 
   const editing = jobs.find((j) => j.id === editingId) ?? null;
 
-  const subtitle =
-    jobs.length === 0
+  const subtitle = buscando
+    ? encontrados.length === 1
+      ? "1 equipo encontrado"
+      : encontrados.length + " equipos encontrados"
+    : jobs.length === 0
       ? "Equipos que entran a reparacion"
       : taller.length +
         " en el taller · " +
@@ -59,11 +83,76 @@ export default function ServicePage() {
       <Header
         title="Service"
         subtitle={subtitle}
-        right={<AddButton onClick={() => setAdding(true)} label="Nuevo equipo" />}
+        right={
+          <>
+            <SearchButton
+              open={searching}
+              onClick={() => {
+                setSearching((v) => !v);
+                if (searching) setQuery("");
+              }}
+            />
+            <AddButton onClick={() => setAdding(true)} label="Nuevo equipo" />
+          </>
+        }
       />
+
+      {/* La barra se despliega recien cuando tocan la lupa */}
+      <div
+        className={
+          "grid transition-all duration-200 " +
+          (searching ? "mt-3 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")
+        }
+      >
+        <div className="overflow-hidden">
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
+              </svg>
+            </span>
+            <input
+              ref={searchRef}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Equipo, cliente o falla"
+              enterKeyHint="search"
+              autoComplete="off"
+              tabIndex={searching ? 0 : -1}
+              className="w-full rounded-xl border border-line bg-card py-3 pl-10 pr-9 text-[17px] outline-none placeholder:text-muted focus:ring-2 focus:ring-brand/40"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  searchRef.current?.focus();
+                }}
+                aria-label="Limpiar busqueda"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
 
       {!ready ? (
         <p className="py-10 text-center text-[14px] text-muted">Cargando...</p>
+      ) : buscando && encontrados.length === 0 ? (
+        <div className="mt-5">
+          <Empty title="Sin resultados" hint="Proba con el equipo, el nombre o la falla" />
+        </div>
       ) : jobs.length === 0 ? (
         <div className="mt-5">
           <Empty

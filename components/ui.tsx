@@ -52,6 +52,49 @@ export function AddButton({ onClick, label }: { onClick: () => void; label: stri
   );
 }
 
+/** Lupa del encabezado: al tocarla se despliega la barra de busqueda. */
+export function SearchButton({ open, onClick }: { open: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={open ? "Cerrar busqueda" : "Buscar"}
+      aria-expanded={open}
+      className={
+        "flex h-9 w-9 items-center justify-center rounded-full border border-line active:scale-95 " +
+        (open ? "bg-brand text-white" : "bg-card text-ink")
+      }
+    >
+      {open ? (
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+        >
+          <path d="m6 6 12 12M18 6 6 18" />
+        </svg>
+      ) : (
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        >
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
 export function Stepper({
   value,
   onChange,
