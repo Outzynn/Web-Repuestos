@@ -12,7 +12,7 @@ import {
   whenLabel,
   type Period,
 } from "@/lib/format";
-import { jobProfit, saleProfit, type Job, type Sale } from "@/lib/types";
+import { facuCut, saleProfit, shopProfit, type Job, type Sale } from "@/lib/types";
 
 type Movement =
   | { kind: "venta"; at: string; sale: Sale }
@@ -40,9 +40,11 @@ export default function CajaPage() {
 
   const ventas = periodSales.reduce((sum, s) => sum + s.total, 0);
   const service = periodJobs.reduce((sum, j) => sum + (j.charged ?? 0), 0);
+  // La ganancia es lo que queda para el local: la parte de Facu va aparte.
   const ganancia =
     periodSales.reduce((sum, s) => sum + saleProfit(s), 0) +
-    periodJobs.reduce((sum, j) => sum + jobProfit(j), 0);
+    periodJobs.reduce((sum, j) => sum + shopProfit(j), 0);
+  const paraFacu = periodJobs.reduce((sum, j) => sum + facuCut(j), 0);
 
   const porMedio = useMemo(() => {
     const map = new Map<string, number>();
@@ -55,6 +57,10 @@ export default function CajaPage() {
   const porCobrar = jobs
     .filter((j) => j.status === "entregado" && !j.paid)
     .reduce((sum, j) => sum + (j.charged ?? 0), 0);
+
+  const facuPendiente = jobs
+    .filter((j) => j.status === "entregado" && !j.facuPaid)
+    .reduce((sum, j) => sum + facuCut(j), 0);
 
   const movements = useMemo<Movement[]>(() => {
     const list: Movement[] = [
@@ -117,6 +123,14 @@ export default function CajaPage() {
           </div>
         </div>
 
+        {paraFacu > 0 && (
+          <p className="mt-3 border-t border-line pt-3 text-[13px] text-muted">
+            Aparte de eso, a Facu le corresponden{" "}
+            <span className="font-semibold text-ink">{money(paraFacu)}</span> de los equipos
+            entregados.
+          </p>
+        )}
+
         {porMedio.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2 border-t border-line pt-3">
             {porMedio.map(([metodo, monto]) => (
@@ -134,6 +148,12 @@ export default function CajaPage() {
       {porCobrar > 0 && (
         <p className="mt-3 rounded-2xl bg-warn/10 px-4 py-3 text-[14px] font-medium text-warn">
           Te deben {money(porCobrar)} de equipos ya entregados
+        </p>
+      )}
+
+      {facuPendiente > 0 && (
+        <p className="mt-3 rounded-2xl bg-card px-4 py-3 text-[14px] font-medium">
+          Le debes {money(facuPendiente)} a Facu
         </p>
       )}
 

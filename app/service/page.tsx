@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useData } from "@/components/DataProvider";
 import {
   AddButton,
+  Chips,
   Empty,
   Field,
   GhostButton,
@@ -14,7 +15,13 @@ import {
   useToast,
 } from "@/components/ui";
 import { money, parseMoney, whenLabel } from "@/lib/format";
-import { jobProfit, type Job, type JobStatus } from "@/lib/types";
+import {
+  facuCut,
+  shopProfit,
+  type FacuKind,
+  type Job,
+  type JobStatus,
+} from "@/lib/types";
 
 const STATUS_LABEL: Record<JobStatus, string> = {
   taller: "En el taller",
@@ -159,8 +166,12 @@ function Group({
                   <span className="text-[12px] font-medium text-ok">cobrado</span>
                 )}
                 {job.status !== "entregado" && job.charged !== null && (
-                  <span className="text-[12px] text-muted">
-                    deja {money(jobProfit(job))}
+                  <span className="text-[12px] text-muted">deja {money(shopProfit(job))}</span>
+                )}
+                {facuCut(job) > 0 && (
+                  <span className="block text-[12px] text-muted">
+                    Facu {money(facuCut(job))}
+                    {job.status === "entregado" && !job.facuPaid ? " (sin pagar)" : ""}
                   </span>
                 )}
               </span>
@@ -179,7 +190,12 @@ type JobValues = {
   partsCost: number | null;
   charged: number | null;
   paid: boolean;
+  facuKind: FacuKind | null;
+  facuValue: number | null;
+  facuPaid: boolean;
 };
+
+const FACU_OPTIONS = ["Sin Facu", "Porcentaje", "Monto fijo"] as const;
 
 function JobSheet({
   job,
@@ -200,6 +216,18 @@ function JobSheet({
   const [charged, setCharged] = useState(job?.charged ? String(job.charged) : "");
   const [partsCost, setPartsCost] = useState(job?.partsCost ? String(job.partsCost) : "");
   const [paid, setPaid] = useState(job?.paid ?? false);
+  const [facuPaid, setFacuPaid] = useState(job?.facuPaid ?? false);
+  const [facuMode, setFacuMode] = useState<string>(
+    job?.facuKind === "porcentaje"
+      ? "Porcentaje"
+      : job?.facuKind === "monto"
+        ? "Monto fijo"
+        : "Sin Facu",
+  );
+  const [facuValue, setFacuValue] = useState(job?.facuValue ? String(job.facuValue) : "");
+
+  const facuKind: FacuKind | null =
+    facuMode === "Porcentaje" ? "porcentaje" : facuMode === "Monto fijo" ? "monto" : null;
 
   const values = (): JobValues => ({
     device: device.trim(),
@@ -208,9 +236,17 @@ function JobSheet({
     charged: parseMoney(charged),
     partsCost: parseMoney(partsCost),
     paid,
+    facuKind,
+    facuValue: facuKind ? parseMoney(facuValue) : null,
+    facuPaid,
   });
 
   const ganancia = (parseMoney(charged) ?? 0) - (parseMoney(partsCost) ?? 0);
+  const paraFacu = !facuKind
+    ? 0
+    : facuKind === "monto"
+      ? (parseMoney(facuValue) ?? 0)
+      : Math.round((ganancia * (parseMoney(facuValue) ?? 0)) / 100);
 
   return (
     <Sheet open onClose={onClose} title={job ? job.device : "Entra un equipo"}>
@@ -230,15 +266,44 @@ function JobSheet({
           <Field label="Repuesto" value={partsCost} onChange={setPartsCost} placeholder="0" money />
         </div>
 
+        {/* La parte de Facu: a veces un porcentaje, a veces un monto fijo */}
+        <div>
+          <span className="mb-1 block px-1 text-[12px] font-semibold uppercase tracking-wide text-muted">
+            Para Facu
+          </span>
+          <Chips options={[...FACU_OPTIONS]} value={facuMode} onChange={setFacuMode} />
+        </div>
+
+        {facuKind && (
+          <Field
+            label={facuKind === "porcentaje" ? "% de la ganancia" : "Cuanto se lleva"}
+            value={facuValue}
+            onChange={setFacuValue}
+            placeholder={facuKind === "porcentaje" ? "50" : "0"}
+            money={facuKind === "monto"}
+          />
+        )}
+
         {(charged || partsCost) && (
           <p className="px-1 text-[13px] text-muted">
             Ganancia: <span className="font-semibold text-ok">{money(ganancia)}</span>
+            {paraFacu > 0 && (
+              <>
+                {" · Facu "}
+                <span className="font-semibold text-ink">{money(paraFacu)}</span>
+                {" · te queda "}
+                <span className="font-semibold text-ok">{money(ganancia - paraFacu)}</span>
+              </>
+            )}
           </p>
         )}
 
         {/* El "debe" se marca solo cuando el equipo ya salio del taller */}
         {job?.status === "entregado" && (
           <Toggle label="Ya me pago" value={paid} onChange={setPaid} />
+        )}
+        {job?.status === "entregado" && paraFacu > 0 && (
+          <Toggle label="Ya le pague a Facu" value={facuPaid} onChange={setFacuPaid} />
         )}
 
         <PrimaryButton onClick={() => onSave(values())} disabled={!device.trim()}>

@@ -16,6 +16,8 @@ import {
   EMPTY,
   keyOf,
   newId,
+  type FacuKind,
+  type ItemKind,
   type Job,
   type Mode,
   type PayMethod,
@@ -42,8 +44,12 @@ type NewJob = {
   issue?: string | null;
   partsCost?: number | null;
   charged?: number | null;
+  facuKind?: FacuKind | null;
+  facuValue?: number | null;
   note?: string | null;
 };
+
+type NewItem = { name: string; kind: ItemKind; qty: number; note?: string | null };
 
 type NewSale = { lines: SaleLine[]; pay: PayMethod; note?: string | null };
 
@@ -64,11 +70,11 @@ type Ctx = {
   addJob: (input: NewJob) => Promise<void>;
   updateJob: (id: string, patch: JobPatch) => Promise<void>;
   deleteJob: (id: string) => Promise<void>;
-  addItem: (input: { name: string; qty: number; note?: string | null }) => Promise<void>;
+  addItem: (input: NewItem) => Promise<void>;
   updateItem: (id: string, patch: ItemPatch) => Promise<void>;
   deleteItem: (id: string) => Promise<void>;
   clearDone: () => Promise<void>;
-  receiveDone: () => Promise<number>;
+  receiveDone: () => Promise<{ stock: number; repuestos: number }>;
 };
 
 const DataContext = createContext<Ctx | null>(null);
@@ -310,6 +316,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         charged: input.charged ?? null,
         status: "taller",
         paid: false,
+        facuKind: input.facuKind ?? null,
+        facuValue: input.facuValue ?? null,
+        facuPaid: false,
         note: input.note?.trim() ? input.note.trim() : null,
         closedAt: null,
         createdAt: new Date().toISOString(),
@@ -338,10 +347,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addItem = useCallback(
-    async (input: { name: string; qty: number; note?: string | null }) => {
+    async (input: NewItem) => {
       const item: ShoppingItem = {
         id: newId(),
         name: input.name.trim(),
+        kind: input.kind,
         qty: input.qty,
         note: input.note?.trim() ? input.note.trim() : null,
         done: false,
@@ -375,15 +385,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     await apply({ ...current.current, items }, [{ kind: "item.clearDone" }]);
   }, [apply]);
 
-  /** Lo comprado pasa al stock: suma al producto que ya existe o lo crea. */
+  /**
+   * Cierra la compra: los productos se suman al stock (o se crean) y los
+   * repuestos simplemente salen de la lista, porque van a una reparacion.
+   */
   const receiveDone = useCallback(async () => {
     const done = current.current.items.filter((i) => i.done);
-    if (done.length === 0) return 0;
+    if (done.length === 0) return { stock: 0, repuestos: 0 };
 
+    const paraStock = done.filter((i) => i.kind === "producto");
     const ops: Op[] = [{ kind: "item.clearDone" }];
     let products = [...current.current.products];
 
-    for (const item of done) {
+    for (const item of paraStock) {
       const index = products.findIndex((p) => keyOf(p.name) === keyOf(item.name));
       if (index >= 0) {
         const qty = products[index].qty + item.qty;
@@ -404,7 +418,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       },
       ops,
     );
-    return done.length;
+    return { stock: paraStock.length, repuestos: done.length - paraStock.length };
   }, [apply, makeProduct]);
 
   const value = useMemo<Ctx>(

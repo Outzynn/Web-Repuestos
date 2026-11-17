@@ -12,9 +12,9 @@ Next.js 15 + Tailwind. Se despliega en Vercel sin configuracion.
 | --- | --- |
 | **Vender** | Buscas o escaneas el producto, toca y va al ticket. "Cobrar" pide el medio de pago y listo: queda la venta y se descuenta el stock. Tambien se puede vender algo suelto que no este cargado. |
 | **Stock** | Buscador, filtro por categoria y +/− para ajustar. Tocando el producto se edita precio, costo, codigo o se borra. El boton + carga uno nuevo. |
-| **Service** | Equipos en reparacion: entra, se marca listo y se entrega (cobrado o debiendo). Guarda que se cobra y cuanto costo el repuesto. |
-| **Caja** | Lo que entro hoy / 7 dias / 30 dias: ventas, service, ganancia y medios de pago. Tocando una venta se ve el detalle y se puede borrar devolviendo el stock. |
-| **A comprar** | La lista para el proveedor. Lo que marcas como comprado se pasa al stock de una vez. |
+| **Service** | Equipos en reparacion: entra, se marca listo y se entrega (cobrado o debiendo). Guarda que se cobra, cuanto costo el repuesto y cuanto le toca a Facu. |
+| **Caja** | Lo que entro hoy / 7 dias / 30 dias: ventas, service, ganancia (ya sin la parte de Facu) y medios de pago. Tocando una venta se ve el detalle y se puede borrar devolviendo el stock. |
+| **A comprar** | La lista para el proveedor, separada en repuestos y productos. Al terminar la compra, los productos se suman al stock y los repuestos salen de la lista. |
 
 ## Lo que se carga de cada cosa
 
@@ -25,6 +25,23 @@ Nada de clientes, fichas ni numeros de orden.
 
 Si vendes algo que no estaba cargado, la app lo crea sola en el stock (en cero)
 con el precio y el costo que pusiste, asi la proxima vez ya esta.
+
+## La parte de Facu
+
+En la ficha del equipo, **Para Facu** admite un porcentaje de la ganancia o un
+monto fijo, y queda en blanco cuando no le toca nada. La ficha muestra al
+instante cuanto se lleva y cuanto queda para el local, y una vez entregado el
+equipo hay un interruptor **Ya le pague a Facu**.
+
+En Caja la ganancia es lo que queda para el local (la parte de Facu ya
+descontada), con una linea que aclara cuanto le corresponde y otra que avisa
+cuanto se le debe.
+
+## Repuestos y productos en la lista de compra
+
+Cada cosa anotada es **repuesto** (va a una reparacion) o **producto** (es para
+vender). Al terminar la compra los productos se suman al stock y los repuestos
+simplemente salen de la lista, porque no son mercaderia.
 
 ## Codigo de barras
 

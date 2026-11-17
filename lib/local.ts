@@ -23,7 +23,8 @@ function fromOld(): Snapshot | null {
       note: p.note ?? null,
       createdAt: p.createdAt ?? new Date().toISOString(),
     }));
-    return { ...EMPTY, products, items: data.items ?? [] };
+    const items = (data.items ?? []).map((item) => ({ ...item, kind: item.kind ?? "repuesto" }));
+    return { ...EMPTY, products, items };
   } catch {
     return null;
   }
@@ -38,8 +39,14 @@ export function loadLocal(): Snapshot {
       return {
         products: data.products ?? [],
         sales: data.sales ?? [],
-        jobs: data.jobs ?? [],
-        items: data.items ?? [],
+        jobs: (data.jobs ?? []).map((job) => ({
+          ...job,
+          facuKind: job.facuKind ?? null,
+          facuValue: job.facuValue ?? null,
+          facuPaid: job.facuPaid ?? false,
+        })),
+        // Lo guardado antes de separar repuestos de productos era todo repuesto.
+        items: (data.items ?? []).map((item) => ({ ...item, kind: item.kind ?? "repuesto" })),
       };
     }
     return fromOld() ?? EMPTY;

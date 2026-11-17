@@ -66,6 +66,9 @@ export function ensureSchema(): Promise<void> {
           created_at TIMESTAMPTZ NOT NULL DEFAULT now()
         )
       `;
+      await db`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS facu_kind TEXT`;
+      await db`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS facu_value NUMERIC`;
+      await db`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS facu_paid BOOLEAN NOT NULL DEFAULT false`;
       await db`
         CREATE TABLE IF NOT EXISTS shopping_items (
           id TEXT PRIMARY KEY,
@@ -76,6 +79,7 @@ export function ensureSchema(): Promise<void> {
           created_at TIMESTAMPTZ NOT NULL DEFAULT now()
         )
       `;
+      await db`ALTER TABLE shopping_items ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'repuesto'`;
     })().catch((err) => {
       schema = null;
       throw err;
@@ -128,6 +132,9 @@ function toJob(r: Row): Job {
     charged: nullableNumber(r.charged),
     status: String(r.status ?? "taller") as Job["status"],
     paid: Boolean(r.paid),
+    facuKind: (text(r.facu_kind) as Job["facuKind"]) ?? null,
+    facuValue: nullableNumber(r.facu_value),
+    facuPaid: Boolean(r.facu_paid),
     note: text(r.note),
     closedAt: r.closed_at ? new Date(r.closed_at as string).toISOString() : null,
     createdAt: new Date(r.created_at as string).toISOString(),
@@ -138,6 +145,7 @@ function toItem(r: Row): ShoppingItem {
   return {
     id: String(r.id),
     name: String(r.name),
+    kind: (String(r.kind ?? "repuesto") as ShoppingItem["kind"]),
     qty: Number(r.qty ?? 1),
     note: text(r.note),
     done: Boolean(r.done),
@@ -220,9 +228,11 @@ export async function runOp(op: Op): Promise<void> {
     case "job.add": {
       const j = op.job;
       await db`
-        INSERT INTO jobs (id, device, customer, issue, parts_cost, charged, status, paid, note, closed_at)
+        INSERT INTO jobs (id, device, customer, issue, parts_cost, charged, status, paid,
+                          facu_kind, facu_value, facu_paid, note, closed_at)
         VALUES (${j.id}, ${j.device}, ${j.customer}, ${j.issue}, ${j.partsCost}, ${j.charged},
-                ${j.status}, ${j.paid}, ${j.note}, ${j.closedAt})
+                ${j.status}, ${j.paid}, ${j.facuKind}, ${j.facuValue}, ${j.facuPaid},
+                ${j.note}, ${j.closedAt})
         ON CONFLICT (id) DO NOTHING
       `;
       return;
@@ -235,6 +245,9 @@ export async function runOp(op: Op): Promise<void> {
           device = COALESCE(${p.device ?? null}::text, device),
           status = COALESCE(${p.status ?? null}::text, status),
           paid = COALESCE(${p.paid ?? null}::boolean, paid),
+          facu_paid = COALESCE(${p.facuPaid ?? null}::boolean, facu_paid),
+          facu_kind = CASE WHEN ${p.facuKind !== undefined}::boolean THEN ${p.facuKind ?? null}::text ELSE facu_kind END,
+          facu_value = CASE WHEN ${p.facuValue !== undefined}::boolean THEN ${p.facuValue ?? null}::numeric ELSE facu_value END,
           customer = CASE WHEN ${p.customer !== undefined}::boolean THEN ${p.customer ?? null}::text ELSE customer END,
           issue = CASE WHEN ${p.issue !== undefined}::boolean THEN ${p.issue ?? null}::text ELSE issue END,
           note = CASE WHEN ${p.note !== undefined}::boolean THEN ${p.note ?? null}::text ELSE note END,
@@ -253,8 +266,8 @@ export async function runOp(op: Op): Promise<void> {
     case "item.add": {
       const i = op.item;
       await db`
-        INSERT INTO shopping_items (id, name, qty, note, done)
-        VALUES (${i.id}, ${i.name}, ${i.qty}, ${i.note}, ${i.done})
+        INSERT INTO shopping_items (id, name, kind, qty, note, done)
+        VALUES (${i.id}, ${i.name}, ${i.kind}, ${i.qty}, ${i.note}, ${i.done})
         ON CONFLICT (id) DO NOTHING
       `;
       return;
@@ -265,6 +278,7 @@ export async function runOp(op: Op): Promise<void> {
       await db`
         UPDATE shopping_items SET
           name = COALESCE(${p.name ?? null}::text, name),
+          kind = COALESCE(${p.kind ?? null}::text, kind),
           qty = COALESCE(${p.qty ?? null}::int, qty),
           done = COALESCE(${p.done ?? null}::boolean, done),
           note = CASE WHEN ${p.note !== undefined}::boolean THEN ${p.note ?? null}::text ELSE note END

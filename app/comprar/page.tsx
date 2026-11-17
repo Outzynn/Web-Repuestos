@@ -2,8 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { useData } from "@/components/DataProvider";
-import { Empty, Header, PrimaryButton, Stepper, useToast } from "@/components/ui";
-import { keyOf, type ShoppingItem } from "@/lib/types";
+import { Chips, Empty, Header, PrimaryButton, Stepper, useToast } from "@/components/ui";
+import { keyOf, type ItemKind, type ShoppingItem } from "@/lib/types";
+
+const KINDS: { id: ItemKind; label: string; plural: string }[] = [
+  { id: "repuesto", label: "Repuesto", plural: "Repuestos" },
+  { id: "producto", label: "Producto", plural: "Productos" },
+];
 
 export default function ComprarPage() {
   const { ready, items, products, addItem, updateItem, deleteItem, clearDone, receiveDone } =
@@ -11,12 +16,14 @@ export default function ComprarPage() {
   const { toast, show } = useToast();
 
   const [name, setName] = useState("");
+  const [kind, setKind] = useState<ItemKind>("repuesto");
   const [qty, setQty] = useState(1);
   const [note, setNote] = useState("");
   const [noteOpen, setNoteOpen] = useState(false);
 
   const pending = items.filter((i) => !i.done);
   const done = items.filter((i) => i.done);
+  const doneProducts = done.filter((i) => i.kind === "producto").length;
 
   const suggestions = useMemo(() => {
     const query = keyOf(name);
@@ -29,7 +36,7 @@ export default function ComprarPage() {
   async function submit() {
     const clean = name.trim();
     if (!clean) return;
-    await addItem({ name: clean, qty, note });
+    await addItem({ name: clean, kind, qty, note });
     setName("");
     setQty(1);
     setNote("");
@@ -42,12 +49,17 @@ export default function ComprarPage() {
       show("La lista esta vacia");
       return;
     }
-    const lines = pending.map((i) => {
-      const cantidad = i.qty > 1 ? i.qty + "x " : "";
-      const nota = i.note ? " (" + i.note + ")" : "";
-      return "- " + cantidad + i.name + nota;
-    });
-    const text = "Para comprar\n" + lines.join("\n");
+    const linea = (item: ShoppingItem) => {
+      const cantidad = item.qty > 1 ? item.qty + "x " : "";
+      const nota = item.note ? " (" + item.note + ")" : "";
+      return "- " + cantidad + item.name + nota;
+    };
+    const bloques = KINDS.map(({ id, plural }) => {
+      const list = pending.filter((i) => i.kind === id);
+      if (list.length === 0) return "";
+      return plural + "\n" + list.map(linea).join("\n");
+    }).filter(Boolean);
+    const text = "Para comprar\n\n" + bloques.join("\n\n");
 
     if (typeof navigator !== "undefined" && navigator.share) {
       navigator.share({ title: "Para comprar", text }).catch(() => {});
@@ -59,9 +71,16 @@ export default function ComprarPage() {
       .catch(() => show("No se pudo copiar"));
   }
 
-  async function intoStock() {
-    const count = await receiveDone();
-    show(count > 0 ? count + " al stock" : "Nada marcado como comprado");
+  async function finishBuy() {
+    const { stock, repuestos } = await receiveDone();
+    if (stock === 0 && repuestos === 0) {
+      show("Nada marcado como comprado");
+      return;
+    }
+    const partes = [];
+    if (stock > 0) partes.push(stock + (stock === 1 ? " producto al stock" : " productos al stock"));
+    if (repuestos > 0) partes.push(repuestos + (repuestos === 1 ? " repuesto" : " repuestos"));
+    show(partes.join(" · "));
   }
 
   const subtitle =
@@ -88,6 +107,22 @@ export default function ComprarPage() {
             className="min-w-0 flex-1 rounded-xl bg-app px-3 py-3 text-[17px] outline-none placeholder:text-muted focus:ring-2 focus:ring-brand/40"
           />
           <Stepper value={qty} onChange={setQty} min={1} />
+        </div>
+
+        <div className="mt-2">
+          <Chips
+            options={KINDS.map((k) => k.label)}
+            value={KINDS.find((k) => k.id === kind)?.label ?? "Repuesto"}
+            onChange={(label) => {
+              const found = KINDS.find((k) => k.label === label);
+              if (found) setKind(found.id);
+            }}
+          />
+          <p className="mt-1 px-1 text-[12px] text-muted">
+            {kind === "producto"
+              ? "Al marcarlo como comprado se suma al stock."
+              : "Va a una reparacion: no entra al stock."}
+          </p>
         </div>
 
         {suggestions.length > 0 && (
@@ -135,18 +170,30 @@ export default function ComprarPage() {
         ) : pending.length === 0 ? (
           <Empty title="No falta nada" hint="Anota lo que necesites cuando te lo pidan o se termine" />
         ) : (
-          <ul className="divide-y divide-line overflow-hidden rounded-2xl bg-card shadow-sm">
-            {pending.map((item) => (
-              <Row
-                key={item.id}
-                item={item}
-                stock={products.find((p) => keyOf(p.name) === keyOf(item.name))?.qty ?? 0}
-                onToggle={() => updateItem(item.id, { done: true })}
-                onQty={(next) => updateItem(item.id, { qty: next })}
-                onDelete={() => deleteItem(item.id)}
-              />
-            ))}
-          </ul>
+          KINDS.map(({ id, plural }) => {
+            const list = pending.filter((i) => i.kind === id);
+            if (list.length === 0) return null;
+            return (
+              <div key={id} className="mb-5">
+                <h2 className="mb-2 px-1 text-[13px] font-semibold uppercase tracking-wide text-muted">
+                  {plural} ({list.length})
+                </h2>
+                <ul className="divide-y divide-line overflow-hidden rounded-2xl bg-card shadow-sm">
+                  {list.map((item) => (
+                    <Row
+                      key={item.id}
+                      item={item}
+                      stock={products.find((p) => keyOf(p.name) === keyOf(item.name))?.qty ?? 0}
+                      onToggle={() => updateItem(item.id, { done: true })}
+                      onQty={(next) => updateItem(item.id, { qty: next })}
+                      onKind={(next) => updateItem(item.id, { kind: next })}
+                      onDelete={() => deleteItem(item.id)}
+                    />
+                  ))}
+                </ul>
+              </div>
+            );
+          })
         )}
       </section>
 
@@ -154,7 +201,7 @@ export default function ComprarPage() {
         <button
           type="button"
           onClick={shareList}
-          className="mt-4 w-full rounded-xl border border-line bg-card py-3.5 text-[16px] font-semibold text-brand"
+          className="mt-1 w-full rounded-xl border border-line bg-card py-3.5 text-[16px] font-semibold text-brand"
         >
           Compartir / copiar lista
         </button>
@@ -173,17 +220,25 @@ export default function ComprarPage() {
                 stock={0}
                 onToggle={() => updateItem(item.id, { done: false })}
                 onQty={(next) => updateItem(item.id, { qty: next })}
+                onKind={(next) => updateItem(item.id, { kind: next })}
                 onDelete={() => deleteItem(item.id)}
               />
             ))}
           </ul>
+          <p className="mt-2 px-1 text-[12px] text-muted">
+            {doneProducts > 0
+              ? doneProducts +
+                (doneProducts === 1 ? " producto se suma" : " productos se suman") +
+                " al stock. Los repuestos salen de la lista."
+              : "Son todos repuestos: salen de la lista sin tocar el stock."}
+          </p>
           <div className="mt-3 flex gap-2">
             <button
               type="button"
-              onClick={intoStock}
+              onClick={finishBuy}
               className="flex-1 rounded-xl bg-ok py-3.5 text-[16px] font-semibold text-white"
             >
-              Pasar al stock
+              Terminar compra
             </button>
             <button
               type="button"
@@ -209,12 +264,14 @@ function Row({
   stock,
   onToggle,
   onQty,
+  onKind,
   onDelete,
 }: {
   item: ShoppingItem;
   stock: number;
   onToggle: () => void;
   onQty: (next: number) => void;
+  onKind: (next: ItemKind) => void;
   onDelete: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -253,6 +310,11 @@ function Row({
           >
             {item.qty > 1 && <span className="text-brand">{item.qty}x </span>}
             {item.name}
+            {item.done && item.kind === "producto" && (
+              <span className="ml-2 rounded-full bg-app px-2 py-0.5 text-[11px] font-semibold text-brand no-underline">
+                al stock
+              </span>
+            )}
           </p>
           {item.note && <p className="truncate text-[13px] text-muted">{item.note}</p>}
           {!item.done && stock > 0 && (
@@ -272,15 +334,25 @@ function Row({
       </div>
 
       {open && (
-        <div className="mt-2 flex items-center justify-between gap-3 pl-10">
-          <Stepper value={item.qty} onChange={onQty} min={1} />
-          <button
-            type="button"
-            onClick={onDelete}
-            className="rounded-xl border border-danger/30 px-3 py-2 text-[14px] font-semibold text-danger"
-          >
-            Eliminar
-          </button>
+        <div className="mt-2 space-y-2 pl-10">
+          <div className="flex items-center justify-between gap-3">
+            <Stepper value={item.qty} onChange={onQty} min={1} />
+            <button
+              type="button"
+              onClick={onDelete}
+              className="rounded-xl border border-danger/30 px-3 py-2 text-[14px] font-semibold text-danger"
+            >
+              Eliminar
+            </button>
+          </div>
+          <Chips
+            options={KINDS.map((k) => k.label)}
+            value={KINDS.find((k) => k.id === item.kind)?.label ?? "Repuesto"}
+            onChange={(label) => {
+              const found = KINDS.find((k) => k.label === label);
+              if (found) onKind(found.id);
+            }}
+          />
         </div>
       )}
     </li>

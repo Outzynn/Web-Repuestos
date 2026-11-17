@@ -37,6 +37,9 @@ export type Sale = {
 /** Trabajo de servicio tecnico: entra un equipo, se arregla, se entrega. */
 export type JobStatus = "taller" | "listo" | "entregado";
 
+/** Facu cobra a veces un porcentaje de la ganancia y a veces un monto fijo. */
+export type FacuKind = "porcentaje" | "monto";
+
 export type Job = {
   id: string;
   device: string;
@@ -46,15 +49,22 @@ export type Job = {
   charged: number | null;
   status: JobStatus;
   paid: boolean;
+  facuKind: FacuKind | null;
+  facuValue: number | null;
+  facuPaid: boolean;
   note: string | null;
   closedAt: string | null;
   createdAt: string;
 };
 
+/** Un repuesto se usa en una reparacion; un producto va al stock para vender. */
+export type ItemKind = "repuesto" | "producto";
+
 /** Lista de lo que hay que comprarle al proveedor. */
 export type ShoppingItem = {
   id: string;
   name: string;
+  kind: ItemKind;
   qty: number;
   note: string | null;
   done: boolean;
@@ -97,6 +107,18 @@ export function saleProfit(sale: Sale): number {
 /** Lo que dejo un trabajo de service: cobrado menos el repuesto. */
 export function jobProfit(job: Job): number {
   return (job.charged ?? 0) - (job.partsCost ?? 0);
+}
+
+/** La parte de Facu: un porcentaje de esa ganancia o un monto fijo. */
+export function facuCut(job: Job): number {
+  if (!job.facuKind || job.facuValue === null) return 0;
+  if (job.facuKind === "monto") return job.facuValue;
+  return Math.round((jobProfit(job) * job.facuValue) / 100);
+}
+
+/** Lo que queda para el local despues de pagarle a Facu. */
+export function shopProfit(job: Job): number {
+  return jobProfit(job) - facuCut(job);
 }
 
 /** Busca un producto por nombre o por codigo de barras. */

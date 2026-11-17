@@ -247,7 +247,7 @@ export default function StockPage() {
             show("Producto eliminado");
           }}
           onBuy={async () => {
-            await addItem({ name: editing.name, qty: 1 });
+            await addItem({ name: editing.name, kind: "producto", qty: 1 });
             setEditingId(null);
             show("Agregado a la lista de compra");
           }}
