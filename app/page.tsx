@@ -216,7 +216,7 @@ export default function VenderPage() {
           onClick={() => setFreeOpen(true)}
           className="mt-2 px-1 text-[13px] font-medium text-brand"
         >
-          + Vender algo que no esta en el stock
+          + Vender algo que no esta cargado
         </button>
       </section>
 
@@ -227,7 +227,7 @@ export default function VenderPage() {
           results.length === 0 ? (
             <Empty
               title="Sin resultados"
-              hint="Podes venderlo igual con «Vender algo que no esta en el stock»"
+              hint="Podes venderlo igual: se carga solo al stock"
             />
           ) : (
             <ul className="divide-y divide-line overflow-hidden rounded-2xl bg-card shadow-sm">
@@ -388,7 +388,7 @@ export default function VenderPage() {
   );
 }
 
-/** Para vender algo que no esta cargado: nombre y precio, nada mas. */
+/** Venta suelta: con el nombre, el precio y el costo queda cargada al stock. */
 function FreeSaleSheet({
   suggestion,
   onClose,
@@ -413,8 +413,14 @@ function FreeSaleSheet({
           placeholder="Ej: cambio de modulo"
           autoFocus
         />
-        <Field label="Precio" value={price} onChange={setPrice} placeholder="0" money />
-        <Field label="Costo (opcional)" value={cost} onChange={setCost} placeholder="0" money />
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Precio" value={price} onChange={setPrice} placeholder="0" money />
+          <Field label="Costo" value={cost} onChange={setCost} placeholder="0" money />
+        </div>
+        <p className="px-1 text-[13px] text-muted">
+          Queda cargado en el stock con ese precio y ese costo, asi la proxima ya esta.
+          Si no te costo nada, pone 0.
+        </p>
         <PrimaryButton
           onClick={() => {
             const clean = name.trim();
@@ -427,7 +433,7 @@ function FreeSaleSheet({
               cost: parseMoney(cost),
             });
           }}
-          disabled={!name.trim()}
+          disabled={!name.trim() || parseMoney(price) === null || parseMoney(cost) === null}
         >
           Agregar al ticket
         </PrimaryButton>

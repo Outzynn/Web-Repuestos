@@ -18,9 +18,13 @@ Next.js 15 + Tailwind. Se despliega en Vercel sin configuracion.
 
 ## Lo que se carga de cada cosa
 
-Lo minimo: un producto necesita nombre (precio, costo, codigo y categoria son
-opcionales) y un equipo de service necesita solo el equipo. Nada de clientes,
-fichas ni numeros de orden.
+Un producto necesita nombre y **costo** — el costo es lo unico obligatorio
+ademas del nombre, porque es con lo que se calcula la ganancia. Precio, codigo
+y categoria son opcionales. Un equipo de service necesita solo el equipo.
+Nada de clientes, fichas ni numeros de orden.
+
+Si vendes algo que no estaba cargado, la app lo crea sola en el stock (en cero)
+con el precio y el costo que pusiste, asi la proxima vez ya esta.
 
 ## Codigo de barras
 

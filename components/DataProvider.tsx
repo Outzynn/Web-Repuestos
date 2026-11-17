@@ -215,11 +215,34 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return fresh.length;
   }, [apply, makeProduct]);
 
-  /** Guarda la venta y descuenta el stock de cada renglon, todo junto. */
+  /**
+   * Guarda la venta y descuenta el stock. Lo que se vendio suelto queda
+   * cargado como producto (en cero) asi la proxima ya esta con precio y costo.
+   */
   const registerSale = useCallback(
     async (input: NewSale) => {
-      const lines = input.lines.filter((l) => l.qty > 0);
-      if (lines.length === 0) return;
+      const clean = input.lines.filter((l) => l.qty > 0);
+      if (clean.length === 0) return;
+
+      const ops: Op[] = [];
+      let products = [...current.current.products];
+      const nuevos = new Set<string>();
+
+      const lines = clean.map((line) => {
+        if (line.productId) return line;
+        const match = products.find((p) => keyOf(p.name) === keyOf(line.name));
+        if (match) return { ...line, productId: match.id };
+        const product = makeProduct({
+          name: line.name,
+          qty: 0,
+          price: line.price,
+          cost: line.cost,
+        });
+        products = [...products, product];
+        nuevos.add(product.id);
+        ops.push({ kind: "product.add", product });
+        return { ...line, productId: product.id };
+      });
 
       const sale: Sale = {
         id: newId(),
@@ -230,9 +253,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         note: input.note?.trim() ? input.note.trim() : null,
         createdAt: new Date().toISOString(),
       };
+      ops.push({ kind: "sale.add", sale });
 
-      const ops: Op[] = [{ kind: "sale.add", sale }];
-      const products = current.current.products.map((product) => {
+      products = products.map((product) => {
+        if (nuevos.has(product.id)) return product;
         const sold = lines
           .filter((l) => l.productId === product.id)
           .reduce((sum, l) => sum + l.qty, 0);
@@ -243,11 +267,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       });
 
       await apply(
-        { ...current.current, products, sales: [sale, ...current.current.sales] },
+        { ...current.current, products: products.sort(byName), sales: [sale, ...current.current.sales] },
         ops,
       );
     },
-    [apply],
+    [apply, makeProduct],
   );
 
   /** Borra una venta mal cargada y devuelve al stock lo que habia salido. */

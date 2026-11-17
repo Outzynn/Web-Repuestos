@@ -50,6 +50,7 @@ export default function StockPage() {
 
   const capital = products.reduce((sum, p) => sum + (p.cost ?? 0) * p.qty, 0);
   const noStock = products.filter((p) => p.qty === 0).length;
+  const sinCosto = products.filter((p) => p.cost === null).length;
   const editing = products.find((p) => p.id === editingId) ?? null;
 
   /** Cuanto falta por importar del catalogo del Excel. */
@@ -79,7 +80,12 @@ export default function StockPage() {
         subtitle={
           products.length === 0
             ? "Todavia no hay productos"
-            : products.length + " productos · " + money(capital) + " en costo · " + noStock + " sin stock"
+            : products.length +
+              (products.length === 1 ? " producto · " : " productos · ") +
+              money(capital) +
+              " en costo" +
+              (sinCosto > 0 ? " · " + sinCosto + " sin costo" : "") +
+              (noStock > 0 ? " · " + noStock + " sin stock" : "")
         }
         right={<AddButton onClick={() => setAdding({})} label="Cargar producto" />}
       />
@@ -175,8 +181,8 @@ export default function StockPage() {
                     <span className="block truncate text-[13px] text-muted">
                       {money(product.price)}
                       {product.category ? " · " + product.category : ""}
-                      {product.qty === 0 ? " · " : ""}
-                      {product.qty === 0 && <span className="text-danger">sin stock</span>}
+                      {product.qty === 0 && <span className="text-danger"> · sin stock</span>}
+                      {product.cost === null && <span className="text-warn"> · sin costo</span>}
                     </span>
                   </span>
                   {/* La flecha avisa que tocando el producto se edita o se borra */}
@@ -326,6 +332,11 @@ function ProductSheet({
           <Field label="Precio de venta" value={price} onChange={setPrice} placeholder="0" money />
           <Field label="Costo" value={cost} onChange={setCost} placeholder="0" money />
         </div>
+        {parseMoney(cost) === null && (
+          <p className="px-1 text-[13px] text-warn">
+            Carga el costo: con eso la app calcula sola la ganancia de cada venta.
+          </p>
+        )}
 
         <div>
           <span className="mb-1 block px-1 text-[12px] font-semibold uppercase tracking-wide text-muted">
@@ -371,7 +382,7 @@ function ProductSheet({
               barcode: code.trim() ? code.trim() : null,
             })
           }
-          disabled={!name.trim()}
+          disabled={!name.trim() || parseMoney(cost) === null}
         >
           {product ? "Guardar cambios" : "Cargar al stock"}
         </PrimaryButton>
